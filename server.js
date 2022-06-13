@@ -1,11 +1,30 @@
-const express = require('express');
-const app = express();
-require('dotenv').config();
+const app = require("express")();
+const http = require("http").createServer(app);
+const io = require("socket.io")(http);
+const port = process.env.PORT || 3000;
 
-app.set('view engine', 'ejs');
-app.use(express.json());
-app.use(express.static('public'));
+app.get("/", function(req, res) {
+    res.sendFile(__dirname + "/index.html");
+});
 
-app.use('/', require('./routers/index'));
+io.on("connection", function(socket) {
+    console.log('Hello world ...');
 
-app.listen(process.env.PORT, () => console.log(`App is ready on http://localhost:${process.env.PORT}`));
+    socket.on("user_join", function(data) {
+        this.username = data;
+        socket.broadcast.emit('user_join', data);
+    });
+
+    socket.on("chat_message", function(data) {
+        data.username = this.username;
+        socket.broadcast.emit('chat_message', data);
+    });
+
+    socket.on("disconnect", function(data) {
+        socket.broadcast.emit('user_leave', this.username);
+    });
+});
+
+http.listen(port, function() {
+    console.log("Listening on *:" + port);
+});
